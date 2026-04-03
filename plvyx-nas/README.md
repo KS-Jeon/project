@@ -1,4 +1,4 @@
-# PlayX NAS
+# PlvyX NAS
 
 ## 1. 고객 요구사항
 
@@ -9,7 +9,7 @@
 ## 2. 디렉터리 구조
 
 ```text
-plavyx-nas/
+plvyx-nas/
 |-- README.md
 `-- docs/
     |-- architecture.md
