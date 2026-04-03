@@ -1,4 +1,4 @@
-# project
+# README.md
 
 ## 1. 레포지토리 소개
 
