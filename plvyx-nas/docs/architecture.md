@@ -1,8 +1,8 @@
-﻿# PLAVYX NAS 서비스 아키텍처 명세서
+﻿# PLVYX NAS 서비스 아키텍처 명세서
 
 ## 1. 문서 목적
 
-본 문서는 PLAVYX NAS 서비스의 상위 서비스 아키텍처와 네트워크 흐름을 정의하기 위한 문서이다.  
+본 문서는 PLVYX NAS 서비스의 상위 서비스 아키텍처와 네트워크 흐름을 정의하기 위한 문서이다.  
 현재 구성은 AWS Cloud 상의 `Amazon FSx for NetApp ONTAP`를 스토리지 계층으로 사용하고, 인증 및 디렉터리 서비스는 `AWS Managed Microsoft AD`를 통해 제공하는 구조를 기준으로 정리하였다.
 
 ## 2. 아키텍처 개요
@@ -19,7 +19,7 @@
 
 ## 3. 서비스 아키텍처
 
-![서비스 아키텍처](./image/service-architecture.png)
+![서비스 아키텍처](./images/service-architecture.png)
 
 ### 3.1 구성 설명
 
@@ -41,7 +41,7 @@
 
 ## 4. 네트워크 흐름도
 
-![네트워크 흐름도](./image/network-flow.png)
+![네트워크 흐름도](./images/network-flow.png)
 
 ### 4.1 구성 요소
 
