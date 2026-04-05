@@ -1,0 +1,93 @@
+project_id: plvyx-nas
+env: prod
+
+# 인프라 제약 조건
+infrastructure:
+  region: ap-northeast-2
+  multi_region: false
+  public_subnets: false
+  internet_gateway: false
+  nat_gateway: false
+
+# 스토리지 제약 조건
+storage:
+  fsx_deployment_type: SINGLE_AZ_1
+  fsx_ssd_capacity_gib: 1024         # 1TB SSD Tier
+  fsx_capacity_pool_gib: 4096        # 4TB Capacity Pool (HDD)
+  fsx_throughput_mbps: 128
+  fsx_backup_retention_days: 30
+  fsx_snapshot_policy: daily
+
+# 가용성 제약 조건
+availability:
+  fsx_multi_az: false
+  managed_ad_multi_az: true
+  dr_enabled: false
+
+# 보안 제약 조건
+security:
+  encryption_at_rest: true
+  kms_cmk: true
+  kms_key_rotation: true
+  encryption_in_transit: true        # SMB Signing / VPN IPSec
+  public_ip_allowed: false
+  hardcoded_secrets: false
+  secret_manager: aws_secretsmanager
+  sg_deny_by_default: true
+  mfa_required: false                # 요청 명시: MFA 없음
+
+# 네트워크 제약 조건
+network:
+  connectivity: site_to_site_vpn
+  vpn_type: ipsec
+  vpn_routing: static
+  vpc_cidr: "10.100.0.0/16"
+  subnets:
+    - name: plvyx-nas-prod-vpc-subnet-private-a
+      cidr: "10.100.10.0/24"
+      az: ap-northeast-2a
+      purpose: fsx
+    - name: plvyx-nas-prod-vpc-subnet-private-b
+      cidr: "10.100.11.0/24"
+      az: ap-northeast-2a
+      purpose: managed_ad_dc1
+    - name: plvyx-nas-prod-vpc-subnet-private-c
+      cidr: "10.100.12.0/24"
+      az: ap-northeast-2c
+      purpose: managed_ad_dc2
+
+# 비용 제약 조건
+cost:
+  monthly_budget_usd: 800
+  estimated_monthly_cost_usd: 320    # FSx + Managed AD + VPN + KMS 합산 추정
+
+# IaC 제약 조건
+iac:
+  tool: terraform
+  terraform_modules:
+    - source: "terraform-aws-modules/vpc/aws"
+    - source: "terraform-aws-modules/vpn-gateway/aws"
+  direct_resources:
+    - aws_fsx_ontap_file_system
+    - aws_fsx_ontap_storage_virtual_machine
+    - aws_fsx_ontap_volume
+    - aws_directory_service_directory
+    - aws_kms_key
+    - aws_security_group
+    - aws_cloudwatch_metric_alarm
+
+# 운영 제약 조건
+operations:
+  scaling: manual
+  log_retention_days: 90
+  cloudwatch_logs: true
+  concurrent_users: 10
+  target_throughput_mbps: 150
+
+# Out of Scope
+out_of_scope:
+  - aws_transfer_family
+  - multi_region_dr
+  - client_os_automation
+  - sftp
+  - application_level_data_management

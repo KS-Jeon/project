@@ -1,0 +1,142 @@
+{
+  "project_id": "plvyx-nas",
+  "env": "prod",
+  "region": "ap-northeast-2",
+  "modules": [
+    {
+      "name": "vpc",
+      "source": "terraform-aws-modules/vpc/aws",
+      "inputs": {
+        "name": "plvyx-nas-prod-vpc",
+        "cidr": "10.100.0.0/16",
+        "azs": ["ap-northeast-2a", "ap-northeast-2c"],
+        "private_subnets": [
+          "10.100.10.0/24",
+          "10.100.11.0/24",
+          "10.100.12.0/24"
+        ],
+        "enable_dns_hostnames": true,
+        "enable_dns_support": true,
+        "enable_nat_gateway": false,
+        "create_igw": false
+      },
+      "outputs": ["vpc_id", "private_subnets"]
+    },
+    {
+      "name": "vpn_gateway",
+      "source": "terraform-aws-modules/vpn-gateway/aws",
+      "inputs": {
+        "vpn_gateway_id": "<from vpc module>",
+        "customer_gateway_id": "<from aws_customer_gateway>",
+        "vpc_id": "<from vpc module>",
+        "vpc_subnet_route_table_ids": "<private route table ids>",
+        "vpn_connection_static_routes_only": true,
+        "vpn_connection_static_routes_destinations": ["<onprem_cidr_var>"]
+      },
+      "outputs": ["vpn_connection_id", "vpn_connection_tunnel1_address", "vpn_connection_tunnel2_address"]
+    },
+    {
+      "name": "fsx_ontap",
+      "source": "aws_provider_direct",
+      "resource": "aws_fsx_ontap_file_system",
+      "inputs": {
+        "storage_capacity": 1024,
+        "subnet_ids": ["<subnet-private-a>"],
+        "preferred_subnet_id": "<subnet-private-a>",
+        "deployment_type": "SINGLE_AZ_1",
+        "throughput_capacity": 128,
+        "security_group_ids": ["<sg-fsx>"],
+        "kms_key_id": "<kms_key_arn>",
+        "automatic_backup_retention_days": 30,
+        "daily_automatic_backup_start_time": "02:00",
+        "weekly_maintenance_start_time": "7:03:00"
+      },
+      "outputs": ["id", "dns_name", "endpoints"]
+    },
+    {
+      "name": "fsx_svm",
+      "source": "aws_provider_direct",
+      "resource": "aws_fsx_ontap_storage_virtual_machine",
+      "inputs": {
+        "file_system_id": "<fsx_ontap_id>",
+        "name": "plvyx-nas-prod-fsx-svm",
+        "active_directory_configuration": {
+          "netbios_name": "NAS",
+          "self_managed_active_directory_configuration": {
+            "domain_name": "nas.plvyx.com",
+            "dns_ips": "<managed_ad_dns_ips>",
+            "username": "Admin",
+            "password": "<secretsmanager_ref>"
+          }
+        }
+      },
+      "outputs": ["id", "endpoints"]
+    },
+    {
+      "name": "fsx_volume",
+      "source": "aws_provider_direct",
+      "resource": "aws_fsx_ontap_volume",
+      "inputs": {
+        "name": "plvyx-nas-prod-fsx-vol",
+        "storage_virtual_machine_id": "<svm_id>",
+        "junction_path": "/shared",
+        "size_in_megabytes": 1048576,
+        "storage_efficiency_enabled": true,
+        "tiering_policy": {
+          "name": "AUTO",
+          "cooling_period": 31
+        }
+      },
+      "outputs": ["id", "uuid"]
+    },
+    {
+      "name": "managed_ad",
+      "source": "aws_provider_direct",
+      "resource": "aws_directory_service_directory",
+      "inputs": {
+        "name": "nas.plvyx.com",
+        "password": "<secretsmanager_ref>",
+        "edition": "Standard",
+        "type": "MicrosoftAD",
+        "vpc_settings": {
+          "vpc_id": "<vpc_id>",
+          "subnet_ids": ["<subnet-private-b>", "<subnet-private-c>"]
+        }
+      },
+      "outputs": ["id", "dns_ip_addresses", "security_group_id"]
+    },
+    {
+      "name": "kms",
+      "source": "aws_provider_direct",
+      "resource": "aws_kms_key",
+      "inputs": {
+        "description": "plvyx-nas-prod-kms-fsx",
+        "enable_key_rotation": true,
+        "deletion_window_in_days": 30
+      },
+      "outputs": ["arn", "key_id"]
+    }
+  ],
+  "variables": {
+    "onprem_public_ip": {
+      "description": "온프레미스 VPN 장비 Public IP",
+      "type": "string",
+      "required": true
+    },
+    "onprem_cidr": {
+      "description": "온프레미스 내부 CIDR (Security Group 및 VPN Static Route 적용)",
+      "type": "string",
+      "required": true
+    },
+    "ad_admin_password_secret_arn": {
+      "description": "Managed AD 관리자 패스워드가 저장된 Secrets Manager ARN",
+      "type": "string",
+      "required": true
+    },
+    "cloudwatch_sns_topic_arn": {
+      "description": "CloudWatch Alarm 알림 대상 SNS Topic ARN",
+      "type": "string",
+      "required": false
+    }
+  }
+}
