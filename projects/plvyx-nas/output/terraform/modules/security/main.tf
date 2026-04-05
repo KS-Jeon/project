@@ -1,7 +1,62 @@
+locals {
+  ad_ingress_rules = {
+    dns_tcp = {
+      from_port = 53
+      to_port   = 53
+      protocol  = "tcp"
+    }
+    dns_udp = {
+      from_port = 53
+      to_port   = 53
+      protocol  = "udp"
+    }
+    kerberos_tcp = {
+      from_port = 88
+      to_port   = 88
+      protocol  = "tcp"
+    }
+    kerberos_udp = {
+      from_port = 88
+      to_port   = 88
+      protocol  = "udp"
+    }
+    ldap_tcp = {
+      from_port = 389
+      to_port   = 389
+      protocol  = "tcp"
+    }
+    ldap_udp = {
+      from_port = 389
+      to_port   = 389
+      protocol  = "udp"
+    }
+    ldaps_tcp = {
+      from_port = 636
+      to_port   = 636
+      protocol  = "tcp"
+    }
+    smb_tcp = {
+      from_port = 445
+      to_port   = 445
+      protocol  = "tcp"
+    }
+    rpc_tcp = {
+      from_port = 135
+      to_port   = 135
+      protocol  = "tcp"
+    }
+    dynamic_rpc_tcp = {
+      from_port = 49152
+      to_port   = 65535
+      protocol  = "tcp"
+    }
+  }
+}
+
 resource "aws_security_group" "fsx" {
-  name        = local.names.fsx_security_group
+  name        = var.fsx_security_group_name
   description = "Allow SMB/NFS from on-premises and AD traffic from FSx to Managed AD"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 
   revoke_rules_on_delete = true
 
@@ -34,7 +89,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 53
     to_port         = 53
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -42,7 +97,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 53
     to_port         = 53
     protocol        = "udp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -50,7 +105,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 88
     to_port         = 88
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -58,7 +113,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 88
     to_port         = 88
     protocol        = "udp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -66,7 +121,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 389
     to_port         = 389
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -74,7 +129,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 389
     to_port         = 389
     protocol        = "udp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -82,7 +137,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 636
     to_port         = 636
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -90,7 +145,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 445
     to_port         = 445
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -98,7 +153,7 @@ resource "aws_security_group" "fsx" {
     from_port       = 135
     to_port         = 135
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
   egress {
@@ -106,12 +161,12 @@ resource "aws_security_group" "fsx" {
     from_port       = 49152
     to_port         = 65535
     protocol        = "tcp"
-    security_groups = [aws_directory_service_directory.managed_ad.security_group_id]
+    security_groups = [var.managed_ad_security_group_id]
   }
 
-  tags = merge(local.provider_default_tags, {
-    Name = local.names.fsx_security_group
-    name = local.names.fsx_security_group
+  tags = merge(var.tags, {
+    Name = var.fsx_security_group_name
+    name = var.fsx_security_group_name
   })
 }
 
@@ -123,17 +178,17 @@ resource "aws_security_group_rule" "ad_from_fsx" {
   from_port                = each.value.from_port
   to_port                  = each.value.to_port
   protocol                 = each.value.protocol
-  security_group_id        = aws_directory_service_directory.managed_ad.security_group_id
+  security_group_id        = var.managed_ad_security_group_id
   source_security_group_id = aws_security_group.fsx.id
 }
 
 resource "aws_ec2_tag" "managed_ad_security_group_tags" {
-  for_each = merge(local.provider_default_tags, {
-    Name = local.names.ad_security_group
-    name = local.names.ad_security_group
+  for_each = merge(var.tags, {
+    Name = var.managed_ad_security_group_name
+    name = var.managed_ad_security_group_name
   })
 
-  resource_id = aws_directory_service_directory.managed_ad.security_group_id
+  resource_id = var.managed_ad_security_group_id
   key         = each.key
   value       = each.value
 }

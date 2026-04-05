@@ -5,6 +5,16 @@
 - `spec/spec.md` 기준으로 `prod` 단일 환경만 구현했다.
 - VPC, VGW, CGW, Site-to-Site VPN, Managed Microsoft AD, FSx for ONTAP, KMS, CloudWatch Alarm을 Terraform으로 구성했다.
 - `shared/policies/naming.md`, `tagging.md`, `security-guardrails.md`를 반영해 private-only 네트워크와 명시적 SG 규칙, 공통 태그를 적용했다.
+- `agents/CODEX.md` 최신 기준에 맞춰 `output/terraform/modules/*`와 `output/terraform/envs/prod/*` 구조로 모듈화했다.
+
+## 1.1 모듈 구성
+
+- `modules/network`: VPC, private subnet, Customer Gateway, VPN 연결
+- `modules/directory`: Managed Microsoft AD
+- `modules/security`: FSx SG와 Managed AD SG 규칙
+- `modules/storage`: KMS, FSx ONTAP file system, SVM, volume
+- `modules/observability`: CloudWatch log group과 alarms
+- `envs/prod`: prod 환경 전용 변수, locals, provider, module wiring
 
 ## 2. 스펙과 AWS 서비스 제약이 만나는 지점
 
@@ -36,6 +46,11 @@
 
 - FSx ONTAP 기본 제공 snapshot policy 중 일 단위와 가장 가까운 값은 `default`다.
 - 스펙의 "일 1회 / 7일 보관"을 정확히 맞추려면 ONTAP CLI/REST로 custom snapshot policy를 별도 생성해야 하므로, Terraform 구현은 AWS 기본 제공 정책 `default`를 사용했다.
+
+### 루트 단일 tf 파일
+
+- 이전 루트 tf 파일은 sandbox 제약으로 삭제되지 않아 block comment로 비활성화했다.
+- 실제 배포 진입점은 `output/terraform/envs/prod`만 사용한다.
 
 ## 3. 비밀 정보 처리
 

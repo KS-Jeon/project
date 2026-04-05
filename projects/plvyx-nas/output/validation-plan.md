@@ -25,9 +25,9 @@ make -C projects/plvyx-nas/output checkov
 ## 3. 배포 검증
 
 ```bash
-terraform -chdir=projects/plvyx-nas/output/terraform init
-terraform -chdir=projects/plvyx-nas/output/terraform plan
-terraform -chdir=projects/plvyx-nas/output/terraform apply
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod init
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod plan
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod apply
 ```
 
 기대 결과:
@@ -42,9 +42,9 @@ terraform -chdir=projects/plvyx-nas/output/terraform apply
 ### FSx
 
 ```bash
-aws fsx describe-file-systems --file-system-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform output -raw fsx_file_system_id)"
-aws fsx describe-storage-virtual-machines --filters Name=file-system-id,Values="$(terraform -chdir=projects/plvyx-nas/output/terraform output -raw fsx_file_system_id)"
-aws fsx describe-volumes --filters Name=file-system-id,Values="$(terraform -chdir=projects/plvyx-nas/output/terraform output -raw fsx_file_system_id)"
+aws fsx describe-file-systems --file-system-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod output -raw fsx_file_system_id)"
+aws fsx describe-storage-virtual-machines --filters Name=file-system-id,Values="$(terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod output -raw fsx_file_system_id)"
+aws fsx describe-volumes --filters Name=file-system-id,Values="$(terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod output -raw fsx_file_system_id)"
 ```
 
 확인 항목:
@@ -59,7 +59,7 @@ aws fsx describe-volumes --filters Name=file-system-id,Values="$(terraform -chdi
 ### Managed AD
 
 ```bash
-aws ds describe-directories --directory-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform output -raw managed_ad_id)"
+aws ds describe-directories --directory-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod output -raw managed_ad_id)"
 ```
 
 확인 항목:
@@ -71,7 +71,7 @@ aws ds describe-directories --directory-ids "$(terraform -chdir=projects/plvyx-n
 ### VPN
 
 ```bash
-aws ec2 describe-vpn-connections --vpn-connection-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform output -raw vpn_connection_id)"
+aws ec2 describe-vpn-connections --vpn-connection-ids "$(terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod output -raw vpn_connection_id)"
 ```
 
 확인 항목:

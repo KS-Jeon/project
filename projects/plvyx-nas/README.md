@@ -22,7 +22,8 @@ Plvyx NAS 프로젝트는 AWS Seoul(`ap-northeast-2`)에 Amazon FSx for NetApp O
 
 ### 구현 방식
 
-- Terraform으로 VPC, VGW, Customer Gateway, VPN Connection, Managed AD, FSx, KMS, CloudWatch를 생성한다.
+- Terraform은 `output/terraform/modules/*`와 `output/terraform/envs/prod/*` 구조로 모듈화했다.
+- `envs/prod`에서 VPC, VGW, Customer Gateway, VPN Connection, Managed AD, FSx, KMS, CloudWatch를 조합한다.
 - VPC는 `terraform-aws-modules/vpc/aws`, VPN은 `terraform-aws-modules/vpn-gateway/aws`를 사용한다.
 - FSx ONTAP과 Managed AD는 AWS provider 리소스를 직접 사용한다.
 - 모든 태그는 `env=prod`, `creator=ksjeon`, `version=20260407`을 기준으로 적용한다.
@@ -47,12 +48,12 @@ Plvyx NAS 프로젝트는 AWS Seoul(`ap-northeast-2`)에 Amazon FSx for NetApp O
 ## 배포 절차
 
 ```bash
-terraform -chdir=projects/plvyx-nas/output/terraform init
-terraform -chdir=projects/plvyx-nas/output/terraform plan \
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod init
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod plan \
   -var="onprem_public_ip=<public-ip>" \
   -var="onprem_cidr=<cidr>" \
   -var="ad_admin_password_secret_arn=<secret-arn>"
-terraform -chdir=projects/plvyx-nas/output/terraform apply
+terraform -chdir=projects/plvyx-nas/output/terraform/envs/prod apply
 ```
 
 `cloudwatch_sns_topic_arn`은 선택 값이다. 배포 후 SMB share 생성이 필요하면 `projects/plvyx-nas/output/scripts/create-smb-share.ps1`를 사용한다.
@@ -101,18 +102,21 @@ projects/plvyx-nas/
 ├── spec/
 ├── output/
 │   ├── terraform/
-│   │   ├── main.tf
-│   │   ├── versions.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   ├── locals.tf
-│   │   ├── vpc.tf
-│   │   ├── vpn.tf
-│   │   ├── security_groups.tf
-│   │   ├── managed_ad.tf
-│   │   ├── fsx.tf
-│   │   ├── kms.tf
-│   │   └── cloudwatch.tf
+│   │   ├── modules/
+│   │   │   ├── directory/
+│   │   │   ├── network/
+│   │   │   ├── observability/
+│   │   │   ├── security/
+│   │   │   └── storage/
+│   │   ├── envs/
+│   │   │   └── prod/
+│   │   │       ├── main.tf
+│   │   │       ├── outputs.tf
+│   │   │       ├── locals.tf
+│   │   │       ├── provider.tf
+│   │   │       ├── variables.tf
+│   │   │       └── versions.tf
+│   │   └── README.md
 │   ├── scripts/
 │   │   └── create-smb-share.ps1
 │   ├── k8s/

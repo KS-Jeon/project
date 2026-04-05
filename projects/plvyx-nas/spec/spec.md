@@ -119,14 +119,14 @@
 
 - **스키마 / 데이터 모델 (간략):**
   - 파일 시스템 구조는 AD 그룹 기반 폴더 권한 정책으로 관리
-  - NTFS 권한 (SMB) / UNIX 권한 (NFS) 혼합 사용 가능 (ONTAP 듀얼 프로토콜)
+  - 볼륨 Security Style: `MIXED` — NTFS 권한(SMB) + UNIX 권한(NFS) 동시 지원 (ONTAP 듀얼 프로토콜)
 
 - **암호화 적용 범위:**
   - 저장 데이터(Data at Rest): AWS KMS Customer Managed Key(CMK) 기반 FSx 볼륨 암호화
   - 전송 데이터(Data in Transit): SMB Signing (Kerberos 기반), VPN IPSec 터널 암호화
 
 - **보존 / 삭제 정책:**
-  - FSx 자동 스냅샷: 일 1회, 보관 7일
+  - FSx 자동 스냅샷: AWS 기본 제공 `default` 정책 사용 (커스텀 정책은 Terraform 미지원 — ONTAP CLI/REST 전용)
   - FSx 백업: 일 1회, 보관 30일
   - 스냅샷 및 백업 삭제는 수동 승인 후 수행
 
@@ -174,10 +174,11 @@
 | aws_fsx_ontap_storage_virtual_machine | `plvyx-nas-prod-fsx-svm` | 기본 SVM, Active Directory 조인 (nas.plvyx.com) | |
 | aws_fsx_ontap_volume | `plvyx-nas-prod-fsx-vol` | 볼륨 크기 정의 필요 (초기 1TB 권장) | Tiering policy: auto |
 | aws_security_group (FSx) | `plvyx-nas-prod-sg-fsx` | 인바운드: TCP 445, TCP/UDP 2049 (온프레미스 CIDR) | 아웃바운드: AD SG만 허용 |
-| aws_security_group (AD) | `plvyx-nas-prod-sg-ad` | 인바운드: FSx SG → 88, 389, 636, 53, 445, 135, 49152-65535 | |
+| aws_security_group_rule (AD) | `plvyx-nas-prod-sg-ad` | FSx SG → AD SG 인바운드 규칙 추가 (88, 389, 636, 53, 445, 135, 49152-65535) | Managed AD는 디렉터리 생성 시 AWS가 SG 자동 생성 — 독립 리소스 생성 불가 |
 | aws_kms_key | `plvyx-nas-prod-kms-fsx` | CMK, 키 로테이션 활성화 | FSx 암호화 전용 |
 | aws_cloudwatch_metric_alarm | `plvyx-nas-prod-fsx-capacity-alarm` | FSx 용량 80% 임계치 알람 | SNS 연동 권장 |
 | aws_cloudwatch_metric_alarm | `plvyx-nas-prod-fsx-throughput-alarm` | Throughput 사용률 80% 임계치 알람 | SNS 연동 권장 |
+| aws_cloudwatch_metric_alarm | `plvyx-nas-prod-vpn-tunnel-alarm` | VPN 터널 DOWN 알람 | SNS 연동 권장 |
 
 ### 7.2 환경별 차이
 
@@ -207,21 +208,24 @@ projects/plvyx-nas/
 │   ├── constraints.yaml
 │   └── acceptance-criteria.md
 ├── output/
-│   ├── main.tf
-│   ├── versions.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── locals.tf
-│   ├── vpc.tf
-│   ├── vpn.tf
-│   ├── security_groups.tf
-│   ├── managed_ad.tf
-│   ├── fsx.tf
-│   ├── kms.tf
-│   ├── cloudwatch.tf
-│   └── README.md
+│   ├── terraform/
+│   │   ├── modules/
+│   │   │   ├── network/        # VPC, Subnet, VGW, CGW, VPN
+│   │   │   ├── directory/      # Managed Microsoft AD
+│   │   │   ├── security/       # Security Group (FSx), SG Rule (AD)
+│   │   │   ├── storage/        # KMS, FSx ONTAP, SVM, Volume
+│   │   │   └── observability/  # CloudWatch Log Group, Alarms
+│   │   └── envs/
+│   │       └── prod/           # provider, versions, variables, locals, main, outputs
+│   ├── scripts/
+│   │   └── create-smb-share.ps1
+│   ├── Makefile
+│   ├── implementation-notes.md
+│   └── validation-plan.md
 └── qa/
 ```
+
+> 모듈명은 설계 컴포넌트 기반 제안이며, 실제 분할은 Codex 재량이다.
 
 ### 7.4 구현 시 주의사항
 
@@ -246,7 +250,7 @@ projects/plvyx-nas/
 
 - **핵심 메트릭 및 임계값:**
   - FSx `StorageCapacityUtilization`: 임계값 80% (경보)
-  - FSx `DataReadThroughput` + `DataWriteThroughput`: 합산 임계값 100 MBps (경보)
+  - FSx `DataReadBytes` + `DataWriteBytes`: 합산 처리량 임계값 100 MBps (경보, 수식으로 계산)
   - VPN `TunnelState`: 0 (DOWN) 시 경보
 
 - **알림 조건:**

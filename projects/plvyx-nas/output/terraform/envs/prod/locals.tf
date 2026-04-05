@@ -50,10 +50,6 @@ locals {
     },
   ]
 
-  private_subnet_names = [for subnet in local.private_subnet_specs : subnet.name]
-  private_subnet_cidrs = [for subnet in local.private_subnet_specs : subnet.cidr]
-  private_subnet_azs   = [for subnet in local.private_subnet_specs : subnet.az]
-
   ad_secret_raw  = data.aws_secretsmanager_secret_version.ad_credentials.secret_string
   ad_secret_json = try(jsondecode(local.ad_secret_raw), {})
 
@@ -70,59 +66,4 @@ locals {
   )
 
   alarm_actions = var.cloudwatch_sns_topic_arn == null ? [] : [var.cloudwatch_sns_topic_arn]
-
-  fsx_throughput_alarm_threshold_bytes_per_second = var.fsx_throughput_alarm_threshold_mbps * 1024 * 1024
-
-  ad_ingress_rules = {
-    dns_tcp = {
-      from_port = 53
-      to_port   = 53
-      protocol  = "tcp"
-    }
-    dns_udp = {
-      from_port = 53
-      to_port   = 53
-      protocol  = "udp"
-    }
-    kerberos_tcp = {
-      from_port = 88
-      to_port   = 88
-      protocol  = "tcp"
-    }
-    kerberos_udp = {
-      from_port = 88
-      to_port   = 88
-      protocol  = "udp"
-    }
-    ldap_tcp = {
-      from_port = 389
-      to_port   = 389
-      protocol  = "tcp"
-    }
-    ldap_udp = {
-      from_port = 389
-      to_port   = 389
-      protocol  = "udp"
-    }
-    ldaps_tcp = {
-      from_port = 636
-      to_port   = 636
-      protocol  = "tcp"
-    }
-    smb_tcp = {
-      from_port = 445
-      to_port   = 445
-      protocol  = "tcp"
-    }
-    rpc_tcp = {
-      from_port = 135
-      to_port   = 135
-      protocol  = "tcp"
-    }
-    dynamic_rpc_tcp = {
-      from_port = 49152
-      to_port   = 65535
-      protocol  = "tcp"
-    }
-  }
 }

@@ -1,25 +1,22 @@
-resource "aws_directory_service_directory" "managed_ad" {
+resource "aws_directory_service_directory" "this" {
   name        = var.directory_domain_name
   short_name  = upper(split(".", var.directory_domain_name)[0])
-  description = local.names.managed_ad
+  description = var.directory_display_name
 
-  password                             = local.managed_ad_password
+  password                             = var.managed_ad_password
   edition                              = "Standard"
   type                                 = "MicrosoftAD"
   enable_sso                           = false
   desired_number_of_domain_controllers = 2
 
   vpc_settings {
-    vpc_id = module.vpc.vpc_id
-    subnet_ids = [
-      module.vpc.private_subnets[1],
-      module.vpc.private_subnets[2],
-    ]
+    vpc_id     = var.vpc_id
+    subnet_ids = var.directory_subnet_ids
   }
 
-  tags = merge(local.provider_default_tags, {
-    Name = local.names.managed_ad
-    name = local.names.managed_ad
+  tags = merge(var.tags, {
+    Name = var.directory_display_name
+    name = var.directory_display_name
   })
 
   timeouts {
